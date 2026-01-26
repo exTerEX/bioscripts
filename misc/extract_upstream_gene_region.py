@@ -16,7 +16,7 @@
 #     --genbank GENBANK     Path to local GenBank file
 #     --locus-tags LOCUS_TAGS
 #                           Comma-separated list of locus_tags to extract
-#     --upstream UPSTREAM   Number of base pairs upstream to extract (default: 200)
+#     --distance DISTANCE   Number of base pairs upstream to extract (default: 200)
 #     --include-start-codon Include the first 3 bp (start codon) of the gene
 #     --output OUTPUT       Output FASTA file path. If not given, outputs to stdout
 #     --email EMAIL         Email address for NCBI Entrez
@@ -68,7 +68,12 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
     assembly_uid = search_result["IdList"][0]
 
     # Link assembly to nucleotide database
-    with Entrez.elink(dbfrom="assembly", db="nucleotide", id=assembly_uid, linkname="assembly_nuccore_refseq") as handle:
+    with Entrez.elink(
+        dbfrom="assembly",
+        db="nucleotide",
+        id=assembly_uid,
+        linkname="assembly_nuccore_refseq",
+    ) as handle:
         link_result = Entrez.read(handle)
 
     nucleotide_ids: list[str] = []
@@ -82,7 +87,12 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
 
     # If no RefSeq, try GenBank link
     if not nucleotide_ids:
-        with Entrez.elink(dbfrom="assembly", db="nucleotide", id=assembly_uid, linkname="assembly_nuccore_insdc") as handle:
+        with Entrez.elink(
+            dbfrom="assembly",
+            db="nucleotide",
+            id=assembly_uid,
+            linkname="assembly_nuccore_insdc",
+        ) as handle:
             link_result = Entrez.read(handle)
 
         if link_result and link_result[0].get("LinkSetDb"):
@@ -92,11 +102,17 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
                     break
 
     if not nucleotide_ids:
-        raise ValueError(f"No nucleotide records found for assembly: {assembly_accession}")
+        raise ValueError(
+            f"No nucleotide records found for assembly: {assembly_accession}"
+        )
 
     # Fetch accession numbers from the UIDs
-    with Entrez.efetch(db="nucleotide", id=",".join(nucleotide_ids), rettype="acc", retmode="text") as handle:
-        accessions = [line.strip() for line in handle.read().strip().split("\n") if line.strip()]
+    with Entrez.efetch(
+        db="nucleotide", id=",".join(nucleotide_ids), rettype="acc", retmode="text"
+    ) as handle:
+        accessions = [
+            line.strip() for line in handle.read().strip().split("\n") if line.strip()
+        ]
 
     return accessions
 
@@ -131,7 +147,7 @@ def extract_upstream_region(
     # Get gene name and locus_tag
     gene_name = get_qualifier(feature, "gene")
     locus_tag = get_qualifier(feature, "locus_tag")
-    
+
     # Need at least locus_tag to proceed
     if not locus_tag and not gene_name:
         return None
@@ -141,18 +157,20 @@ def extract_upstream_region(
         # Upstream region ends at gene start (or +3 if including start codon)
         end_pos = gene_start + 3 if include_start_codon else gene_start
         start_pos = max(0, gene_start - upstream_bp)
-        
+
         upstream_seq = str(record.seq[start_pos:end_pos])
         # Report 1-based coordinates
         region_start = start_pos + 1
         region_end = end_pos
 
     else:  # Reverse strand (-1)
-        gene_end = int(location.end)  # 0-based exclusive (so this is the "start" for - strand)
+        gene_end = int(
+            location.end
+        )  # 0-based exclusive (so this is the "start" for - strand)
         # Upstream region starts at gene end (or -3 if including start codon)
         start_pos = gene_end - 3 if include_start_codon else gene_end
         end_pos = min(seq_len, gene_end + upstream_bp)
-        
+
         upstream_seq = str(record.seq[start_pos:end_pos].reverse_complement())
         # Report 1-based coordinates (in genomic sense)
         region_start = start_pos + 1
@@ -291,14 +309,18 @@ def main(
 
     elif accession:
         # Get nucleotide accessions from assembly accession
-        print(f"Fetching nucleotide accessions for assembly: {accession}", file=sys.stderr)
+        print(
+            f"Fetching nucleotide accessions for assembly: {accession}", file=sys.stderr
+        )
         try:
             nucleotide_accessions = get_nucleotide_accessions_from_assembly(accession)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             return
 
-        print(f"Found {len(nucleotide_accessions)} nucleotide record(s)", file=sys.stderr)
+        print(
+            f"Found {len(nucleotide_accessions)} nucleotide record(s)", file=sys.stderr
+        )
 
         if len(nucleotide_accessions) == 1:
             # Single contig, no threading needed
@@ -308,12 +330,19 @@ def main(
             )
         else:
             # Multiple contigs, use threading
-            print(f"Processing {len(nucleotide_accessions)} contigs with threading...\n", file=sys.stderr)
+            print(
+                f"Processing {len(nucleotide_accessions)} contigs with threading...\n",
+                file=sys.stderr,
+            )
 
             with ThreadPoolExecutor(max_workers=threads) as executor:
                 futures = {
                     executor.submit(
-                        process_nucleotide_accession, acc, locus_tags, upstream_bp, include_start_codon
+                        process_nucleotide_accession,
+                        acc,
+                        locus_tags,
+                        upstream_bp,
+                        include_start_codon,
                     ): acc
                     for acc in nucleotide_accessions
                 }
@@ -323,7 +352,10 @@ def main(
                     try:
                         results = future.result()
                         all_results.extend(results)
-                        print(f"  Processed: {acc} ({len(results)} sequences)", file=sys.stderr)
+                        print(
+                            f"  Processed: {acc} ({len(results)} sequences)",
+                            file=sys.stderr,
+                        )
                     except Exception as e:
                         print(f"  Error processing {acc}: {e}", file=sys.stderr)
 
@@ -369,7 +401,7 @@ if __name__ == "__main__":
         help="Comma-separated list of locus_tags to extract. If not given, extracts all CDS",
     )
     parser.add_argument(
-        "--upstream",
+        "--distance",
         type=int,
         default=200,
         help="Number of base pairs upstream to extract (default: 200)",
@@ -410,7 +442,7 @@ if __name__ == "__main__":
         accession=args.accession,
         genbank_path=args.genbank,
         locus_tags_str=args.locus_tags,
-        upstream_bp=args.upstream,
+        upstream_bp=args.distance,
         include_start_codon=args.include_start_codon,
         output_path=args.output,
         email=args.email,
