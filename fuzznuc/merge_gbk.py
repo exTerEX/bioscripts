@@ -58,10 +58,7 @@ def parse_fuzznuc_features(fuzznuc_path: Path, descriptor: str | None = None) ->
         else:
             start, end = pos1 - 1, pos2  # Convert to 0-based
             # Check if it was a complement in the original
-            if "complement" in match.group(0):
-                strand = -1
-            else:
-                strand = 1
+            strand = -1 if "complement" in match.group(0) else 1
 
         location = FeatureLocation(start, end, strand=strand)
 

@@ -534,7 +534,7 @@ def extract_metadata_from_records(
     first_record = records[0]
 
     # Extract from annotations
-    metadata.organism = first_record.annotations.get("organism", "")
+    metadata.organism = first_record.annotations.get("organism", "")  # type: ignore
 
     # Extract from source feature qualifiers
     metadata.strain = get_source_qualifier(first_record, "strain")
@@ -621,17 +621,17 @@ def fetch_assembly_metadata(
         with Entrez.esearch(db="assembly", term=accession) as handle:
             search_results = Entrez.read(handle)
 
-        if not search_results["IdList"]:
+        if not search_results["IdList"]:  # type: ignore
             print(f"No assembly found for {accession}", file=sys.stderr)
             return StrainMetadata(source_id=accession)
 
-        assembly_id = search_results["IdList"][0]
+        assembly_id = search_results["IdList"][0]  # type: ignore
 
         # Get assembly summary for linked nucleotide records
         with Entrez.esummary(db="assembly", id=assembly_id) as handle:
             summary = Entrez.read(handle)
 
-        doc_sum = summary["DocumentSummarySet"]["DocumentSummary"][0]
+        doc_sum = summary["DocumentSummarySet"]["DocumentSummary"][0]  # type: ignore
 
         # Get linked nucleotide sequences
         with Entrez.elink(
@@ -644,8 +644,8 @@ def fetch_assembly_metadata(
 
         # Try RefSeq first, then GenBank
         nuc_ids = []
-        if link_results[0]["LinkSetDb"]:
-            nuc_ids = [link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]]
+        if link_results[0]["LinkSetDb"]:  # type: ignore
+            nuc_ids = [link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]]  # type: ignore
         else:
             # Try GenBank nucleotide link
             with Entrez.elink(
@@ -655,8 +655,8 @@ def fetch_assembly_metadata(
                 linkname="assembly_nuccore_insdc",
             ) as handle:
                 link_results = Entrez.read(handle)
-            if link_results[0]["LinkSetDb"]:
-                nuc_ids = [link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]]
+            if link_results[0]["LinkSetDb"]:  # type: ignore
+                nuc_ids = [link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]]  # type: ignore
 
         if not nuc_ids:
             print(f"No nucleotide records found for {accession}", file=sys.stderr)
@@ -946,10 +946,9 @@ def compare_strains(
                 confidence_scores.append(80)
 
     # 7. Same type material designation
-    if meta1.type_material and meta2.type_material:
-        if meta1.type_material == meta2.type_material:
-            match_reasons.append(f"Same type material: {meta1.type_material}")
-            confidence_scores.append(90)
+    if meta1.type_material and meta2.type_material and meta1.type_material == meta2.type_material:
+        match_reasons.append(f"Same type material: {meta1.type_material}")
+        confidence_scores.append(90)
 
     # Only return match if we have reasons
     if not match_reasons:
@@ -1159,7 +1158,7 @@ def write_cluster_report(
             ]
         )
 
-        for cluster_idx, (root, members) in enumerate(sorted(clusters.items(), key=lambda kv: -len(kv[1])), start=1):
+        for cluster_idx, (_, members) in enumerate(sorted(clusters.items(), key=lambda kv: -len(kv[1])), start=1):
             for member in sorted(members):
                 meta = metadata_lookup.get(member)
                 if meta is None:

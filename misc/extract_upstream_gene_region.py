@@ -60,10 +60,10 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
     with Entrez.esearch(db="assembly", term=assembly_accession, retmax=1) as handle:
         search_result = Entrez.read(handle)
 
-    if not search_result["IdList"]:
+    if not search_result["IdList"]:  # type: ignore
         raise ValueError(f"Assembly not found: {assembly_accession}")
 
-    assembly_uid = search_result["IdList"][0]
+    assembly_uid = search_result["IdList"][0]  # type: ignore
 
     # Link assembly to nucleotide database
     with Entrez.elink(
@@ -77,8 +77,8 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
     nucleotide_ids: list[str] = []
 
     # Try RefSeq link first
-    if link_result and link_result[0].get("LinkSetDb"):
-        for link_set in link_result[0]["LinkSetDb"]:
+    if link_result and link_result[0].get("LinkSetDb"):  # type: ignore
+        for link_set in link_result[0]["LinkSetDb"]:  # type: ignore
             if link_set.get("Link"):
                 nucleotide_ids = [link["Id"] for link in link_set["Link"]]
                 break
@@ -93,8 +93,8 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
         ) as handle:
             link_result = Entrez.read(handle)
 
-        if link_result and link_result[0].get("LinkSetDb"):
-            for link_set in link_result[0]["LinkSetDb"]:
+        if link_result and link_result[0].get("LinkSetDb"):  # type: ignore
+            for link_set in link_result[0]["LinkSetDb"]:  # type: ignore
                 if link_set.get("Link"):
                     nucleotide_ids = [link["Id"] for link in link_set["Link"]]
                     break
@@ -133,8 +133,8 @@ def extract_upstream_region(
         Tuple of (sequence, gene_name, locus_tag, start, end) or None if extraction fails.
     """
     location = feature.location
-    strand = location.strand
-    seq_len = len(record.seq)
+    strand = location.strand  # type: ignore
+    seq_len = len(record.seq)  # type: ignore
 
     # Get gene name and locus_tag
     gene_name = get_qualifier(feature, "gene")
@@ -145,23 +145,23 @@ def extract_upstream_region(
         return None
 
     if strand == 1:  # Forward strand
-        gene_start = int(location.start)  # 0-based
+        gene_start = int(location.start)  # type: ignore ; 0-based
         # Upstream region ends at gene start (or +3 if including start codon)
         end_pos = gene_start + 3 if include_start_codon else gene_start
         start_pos = max(0, gene_start - upstream_bp)
 
-        upstream_seq = str(record.seq[start_pos:end_pos])
+        upstream_seq = str(record.seq[start_pos:end_pos])  # type: ignore
         # Report 1-based coordinates
         region_start = start_pos + 1
         region_end = end_pos
 
     else:  # Reverse strand (-1)
-        gene_end = int(location.end)  # 0-based exclusive (so this is the "start" for - strand)
+        gene_end = int(location.end)  # type: ignore ; 0-based exclusive (so this is the "start" for - strand)
         # Upstream region starts at gene end (or -3 if including start codon)
         start_pos = gene_end - 3 if include_start_codon else gene_end
         end_pos = min(seq_len, gene_end + upstream_bp)
 
-        upstream_seq = str(record.seq[start_pos:end_pos].reverse_complement())
+        upstream_seq = str(record.seq[start_pos:end_pos].reverse_complement())  # type: ignore
         # Report 1-based coordinates (in genomic sense)
         region_start = start_pos + 1
         region_end = end_pos

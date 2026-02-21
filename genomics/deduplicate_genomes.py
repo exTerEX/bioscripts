@@ -15,6 +15,7 @@ Modified files inside the zip:
 from __future__ import annotations
 
 import argparse
+import contextlib
 import csv
 import json
 import sys
@@ -114,14 +115,10 @@ def parse_duplicate_report(
             uf.union(acc1, acc2)
 
             # Store contig counts when available
-            try:
+            with contextlib.suppress(ValueError, KeyError):
                 contig_counts[acc1] = int(row["num_contigs_1"])
-            except (ValueError, KeyError):
-                pass
-            try:
+            with contextlib.suppress(ValueError, KeyError):
                 contig_counts[acc2] = int(row["num_contigs_2"])
-            except (ValueError, KeyError):
-                pass
 
     # Only keep multi-member clusters
     clusters = {k: v for k, v in uf.get_clusters().items() if len(v) > 1}
@@ -257,7 +254,7 @@ def write_deduplication_report(
             ]
         )
 
-        for cluster_idx, (kept, removed, members) in enumerate(sorted(removals_log, key=lambda r: -len(r[2])), start=1):
+        for cluster_idx, (kept, _, members) in enumerate(sorted(removals_log, key=lambda r: -len(r[2])), start=1):
             for acc in sorted(members):
                 meta = jsonl_metadata.get(acc, {})
                 action = "keep" if acc == kept else "remove"

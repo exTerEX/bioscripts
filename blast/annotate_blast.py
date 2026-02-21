@@ -553,7 +553,7 @@ def find_local_gbff(accession: str, gbff_index: dict[str, Path]) -> Path | None:
 # ---------------------------------------------------------------------------
 
 
-def fetch_genbank_record(accession: str, db: str = "nucleotide") -> list[SeqRecord]:
+def fetch_genbank_record(accession: str, db: str = "nucleotide") -> list[SeqRecord]:  # type: ignore
     """Fetch GenBank record(s) from NCBI Entrez with retries.
 
     Args:
@@ -623,11 +623,11 @@ def _load_local_records(
 
         # Also cache all record accessions from the same file
         for rec in records:
-            record_cache[rec.id] = records
-            record_source[rec.id] = "local"
-            if "." in rec.id:
-                record_cache[rec.id.rsplit(".", 1)[0]] = records
-                record_source[rec.id.rsplit(".", 1)[0]] = "local"
+            record_cache[rec.id] = records  # type: ignore
+            record_source[rec.id] = "local"  # type: ignore
+            if "." in rec.id:  # type: ignore
+                record_cache[rec.id.rsplit(".", 1)[0]] = records  # type: ignore
+                record_source[rec.id.rsplit(".", 1)[0]] = "local"  # type: ignore
 
     return not_found
 
@@ -781,8 +781,8 @@ def find_overlapping_features(
         if feature.type not in ANNOTATION_FEATURE_TYPES:
             continue
 
-        feat_start = int(feature.location.start)
-        feat_end = int(feature.location.end)
+        feat_start = int(feature.location.start)  # type: ignore
+        feat_end = int(feature.location.end)  # type: ignore
 
         overlap_start = max(q_start, feat_start)
         overlap_end = min(q_end, feat_end)
@@ -834,9 +834,9 @@ def extract_gene_annotation(feature: SeqFeature, record: SeqRecord, prefix: str 
         Dictionary with all annotation fields, keyed with *prefix*.
     """
     location = feature.location
-    strand = location.strand
-    feat_start = int(location.start) + 1  # 1-based inclusive
-    feat_end = int(location.end)  # 1-based inclusive
+    strand = location.strand  # type: ignore
+    feat_start = int(location.start) + 1  # type: ignore ; 1-based inclusive
+    feat_end = int(location.end)  # type: ignore ; 1-based inclusive
 
     gene_name = get_qualifier(feature, "gene")
     locus_tag = get_qualifier(feature, "locus_tag")
@@ -851,7 +851,7 @@ def extract_gene_annotation(feature: SeqFeature, record: SeqRecord, prefix: str 
 
     # Nucleotide sequence
     try:
-        nuc_seq = str(feature.location.extract(record.seq))
+        nuc_seq = str(feature.location.extract(record.seq))  # type: ignore
     except Exception:
         nuc_seq = ""
 
@@ -859,7 +859,7 @@ def extract_gene_annotation(feature: SeqFeature, record: SeqRecord, prefix: str 
     protein_seq = get_qualifier(feature, "translation")
     if not protein_seq and feature.type == "CDS" and not is_pseudo:
         try:
-            protein_seq = str(feature.location.extract(record.seq).translate(table=11, to_stop=True))
+            protein_seq = str(feature.location.extract(record.seq).translate(table=11, to_stop=True))  # type: ignore[union-attr]
         except Exception:
             protein_seq = ""
 
@@ -916,7 +916,7 @@ def _find_record_for_accession(
     for rec in records:
         if rec.id == accession or rec.name == accession:
             return rec
-        rec_no_ver = rec.id.rsplit(".", 1)[0] if "." in rec.id else rec.id
+        rec_no_ver = rec.id.rsplit(".", 1)[0] if "." in rec.id else rec.id  # type: ignore
         if rec_no_ver == acc_no_ver:
             return rec
 

@@ -69,13 +69,13 @@ def extract_gene_metadata(feature: SeqFeature, record: SeqRecord) -> dict[str, s
         Dictionary containing gene metadata.
     """
     location = feature.location
-    gene_seq = str(location.extract(record.seq))
+    gene_seq = str(location.extract(record.seq))  # type: ignore
 
     return {
         "gene": get_qualifier(feature, "gene"),
-        "gene_start": int(location.start) + 1,  # Convert to 1-based
-        "gene_end": int(location.end),
-        "gene_strand": "+" if location.strand == 1 else "-",
+        "gene_start": int(location.start) + 1,  # type: ignore ; Convert to 1-based
+        "gene_end": int(location.end),  # type: ignore
+        "gene_strand": "+" if location.strand == 1 else "-",  # type: ignore
         "locus_tag": get_qualifier(feature, "locus_tag"),
         "old_locus_tag": get_qualifier(feature, "old_locus_tag"),
         "EC_number": get_qualifier(feature, "EC_number"),
@@ -117,18 +117,18 @@ def find_nearby_genes(
             continue
 
         # Check strand matches
-        if feature.location.strand != strand_int:
+        if feature.location.strand != strand_int:  # type: ignore
             continue
 
         # Gene start depends on strand
         # + strand: start is at location.start
         # - strand: start is at location.end (transcription goes backwards)
         if strand_int == 1:
-            gene_start_pos = int(feature.location.start)
+            gene_start_pos = int(feature.location.start)  # type: ignore
             # Distance from motif end to gene start (motif should be upstream)
             distance = gene_start_pos - motif_end_0
         else:
-            gene_start_pos = int(feature.location.end)
+            gene_start_pos = int(feature.location.end)  # type: ignore
             # Distance from gene start to motif start (motif should be downstream of gene end)
             distance = motif_start_0 - gene_start_pos
 
@@ -169,10 +169,10 @@ def process_motif_row(
         motif_start, motif_end = motif_end, motif_start
 
     # Extract motif sequence (0-based slicing)
-    motif_seq = str(record.seq[motif_start - 1 : motif_end])
+    motif_seq = str(record.seq[motif_start - 1 : motif_end])  # type: ignore
     if motif_strand == "-":
         # Reverse complement for minus strand
-        motif_seq = str(record.seq[motif_start - 1 : motif_end].reverse_complement())
+        motif_seq = str(record.seq[motif_start - 1 : motif_end].reverse_complement())  # type: ignore
 
     nearby_genes = find_nearby_genes(record, motif_start, motif_end, motif_strand, max_distance)
 
@@ -227,10 +227,7 @@ def main(
         return
 
     # Determine which accessions to fetch
-    if accession:
-        accessions = {accession}
-    else:
-        accessions = {row["SeqName"] for row in rows}
+    accessions = {accession} if accession else {row["SeqName"] for row in rows}
 
     # Fetch GenBank records (parallelized)
     print(f"Fetching {len(accessions)} GenBank record(s) from NCBI...")

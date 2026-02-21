@@ -13,7 +13,8 @@
 #   options:
 #     -h, --help        show this help message and exit
 #     --by_contig       Count regions per each individual contig rather than per assembly
-#     --split_hybrids   Count each hybrid region multiple times, once for each constituent BGC class. The total_count column is unaffected.
+#     --split_hybrids   Count each hybrid region multiple times, once for each
+#                       constituent BGC class. The total_count column is unaffected.
 #     --threads THREADS Number of threads to use for parallel processing. Defaults to number of CPUs.
 
 import argparse
@@ -100,7 +101,7 @@ def tabulate(
         if not contig:
             # Aggregate counts across all contigs for this genome
             genome_counts: Counter[str] = Counter()
-            for cont, regions in g_prods.items():
+            for _, regions in g_prods.items():
                 for region in regions:
                     if len(region) > 1 and not split_hybrids:
                         genome_counts["hybrid"] += 1
@@ -109,12 +110,14 @@ def tabulate(
 
             first_contig = next(iter(g_prods))
             num_contigs = len(g_prods)
+            record_suffix = "s" if num_contigs > 1 else ""
+            description_text = f"{descriptions[genome][first_contig]} [{num_contigs} total record{record_suffix}]"
             table_list.append(
                 {
                     **genome_counts,
                     "record": genome,
                     "total_count": sum(len(r) for r in g_prods.values()),
-                    "description": f"{descriptions[genome][first_contig]} [{num_contigs} total record{'s' if num_contigs > 1 else ''}]",
+                    "description": description_text,
                 }
             )
 
@@ -176,7 +179,10 @@ if __name__ == "__main__":
     parser.add_argument(
         "--split_hybrids",
         action="store_true",
-        help="Count each hybrid region multiple times, once for each constituent BGC class. The total_count column is unaffected.",
+        help=(
+            "Count each hybrid region multiple times, once for each "
+            "constituent BGC class. The total_count column is unaffected."
+        ),
     )
     parser.add_argument(
         "--threads",
