@@ -41,14 +41,9 @@ def parse_json(path: Path) -> tuple[str, dict[str, list[list[str]]], dict[str, s
     with path.open() as f:
         data = json.load(f)
 
-    by_contig = {
-        record["name"]: [area["products"] for area in record["areas"]]
-        for record in data["records"]
-    }
+    by_contig = {record["name"]: [area["products"] for area in record["areas"]] for record in data["records"]}
 
-    descriptions = {
-        record["name"]: record.get("description", "") for record in data["records"]
-    }
+    descriptions = {record["name"]: record.get("description", "") for record in data["records"]}
 
     return data["input_file"], by_contig, descriptions
 
@@ -169,16 +164,10 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Given a bunch of antismash results, count the BGC regions"
-    )
+    parser = argparse.ArgumentParser(description="Given a bunch of antismash results, count the BGC regions")
 
-    parser.add_argument(
-        "directory", type=Path, help="Directory containing antiSMASH directories"
-    )
-    parser.add_argument(
-        "output", type=Path, help="Desired path+name for the output TSV"
-    )
+    parser.add_argument("directory", type=Path, help="Directory containing antiSMASH directories")
+    parser.add_argument("output", type=Path, help="Desired path+name for the output TSV")
     parser.add_argument(
         "--by_contig",
         action="store_true",

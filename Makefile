@@ -14,12 +14,12 @@ install:
 	uv sync --dev
 
 lint: install
-	uv run ruff check src/dupfinder/
-	uv run pyright src/dupfinder/
+	uv run ruff check **/*.py
+	uv run pyright **/*.py
 
 format: install
-	uv run ruff format src/dupfinder/ tests/
-	uv run ruff check --fix src/dupfinder/ tests/
+	uv run ruff format **/*.py
+	uv run ruff check --fix **/*.py
 
 clean:
 	rm -rf build/

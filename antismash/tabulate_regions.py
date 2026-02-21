@@ -74,9 +74,7 @@ def extract_knownclusterblast(record: dict) -> list | None:
         keys are missing or if any errors occur during extraction.
     """
     try:
-        return record["modules"]["antismash.modules.clusterblast"]["knowncluster"][
-            "results"
-        ]
+        return record["modules"]["antismash.modules.clusterblast"]["knowncluster"]["results"]
     except (KeyError, TypeError, AttributeError):
         return None
 
@@ -153,16 +151,10 @@ def main(directory: Path, output: Path, threads: int | None = None):
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Given a bunch of antismash results, tabulate BGC regions"
-    )
+    parser = argparse.ArgumentParser(description="Given a bunch of antismash results, tabulate BGC regions")
 
-    parser.add_argument(
-        "directory", type=Path, help="Directory containing antiSMASH directories"
-    )
-    parser.add_argument(
-        "output", type=Path, help="Desired path/to/filename for the output TSV"
-    )
+    parser.add_argument("directory", type=Path, help="Directory containing antiSMASH directories")
+    parser.add_argument("output", type=Path, help="Desired path/to/filename for the output TSV")
     parser.add_argument(
         "--threads",
         type=int,

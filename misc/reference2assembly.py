@@ -83,9 +83,7 @@ def refseq_to_assembly(accession: str, cache_dir: Path | None = None) -> str | N
 
         doc_summary = summary.get("DocumentSummarySet", {}).get("DocumentSummary", [])
         if doc_summary:
-            assembly_acc = doc_summary[0].get(
-                "AssemblyAccession", doc_summary[0].get("Accession")
-            )
+            assembly_acc = doc_summary[0].get("AssemblyAccession", doc_summary[0].get("Accession"))
             if assembly_acc and cache_dir:
                 cache_dir.mkdir(parents=True, exist_ok=True)
                 cache_file.write_text(assembly_acc)
@@ -116,10 +114,7 @@ def process_accessions(
     results: dict[int, str | None] = {}
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
-        futures = {
-            executor.submit(refseq_to_assembly, acc, cache_dir): i
-            for i, acc in enumerate(accessions)
-        }
+        futures = {executor.submit(refseq_to_assembly, acc, cache_dir): i for i, acc in enumerate(accessions)}
 
         for future in as_completed(futures):
             idx = futures[future]
@@ -231,10 +226,12 @@ def main(
         print(f"Processing {len(accessions)} accessions...", file=sys.stderr)
         assemblies = process_accessions(accessions, cache=cache, threads=threads)
 
-        df = pd.DataFrame({
-            "Nucleotide_accession": accessions,
-            "Assembly_accession": [a or "-" for a in assemblies],
-        })
+        df = pd.DataFrame(
+            {
+                "Nucleotide_accession": accessions,
+                "Assembly_accession": [a or "-" for a in assemblies],
+            }
+        )
 
         if output_path:
             write_table_file(df, output_path)
@@ -244,9 +241,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Convert NCBI nucleotide accessions to assembly accessions"
-    )
+    parser = argparse.ArgumentParser(description="Convert NCBI nucleotide accessions to assembly accessions")
 
     parser.add_argument(
         "input",

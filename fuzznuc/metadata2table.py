@@ -39,9 +39,7 @@ def fetch_genbank(accession: str, email: str) -> SeqRecord:
     Returns:
         SeqRecord object containing the GenBank data.
     """
-    with Entrez.efetch(
-        db="nucleotide", id=accession, rettype="gbwithparts", retmode="text"
-    ) as handle:
+    with Entrez.efetch(db="nucleotide", id=accession, rettype="gbwithparts", retmode="text") as handle:
         return SeqIO.read(handle, "genbank")
 
 
@@ -60,9 +58,7 @@ def get_qualifier(feature: SeqFeature, key: str, default: str = "") -> str:
     return values[0] if values else default
 
 
-def extract_gene_metadata(
-    feature: SeqFeature, record: SeqRecord
-) -> dict[str, str | int]:
+def extract_gene_metadata(feature: SeqFeature, record: SeqRecord) -> dict[str, str | int]:
     """Extract metadata from a CDS feature.
 
     Args:
@@ -178,9 +174,7 @@ def process_motif_row(
         # Reverse complement for minus strand
         motif_seq = str(record.seq[motif_start - 1 : motif_end].reverse_complement())
 
-    nearby_genes = find_nearby_genes(
-        record, motif_start, motif_end, motif_strand, max_distance
-    )
+    nearby_genes = find_nearby_genes(record, motif_start, motif_end, motif_strand, max_distance)
 
     # Only return results if nearby genes are found
     if not nearby_genes:
@@ -243,9 +237,7 @@ def main(
     records_cache: dict[str, SeqRecord] = {}
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
-        futures = {
-            executor.submit(fetch_genbank, acc, email): acc for acc in accessions
-        }
+        futures = {executor.submit(fetch_genbank, acc, email): acc for acc in accessions}
         for future in as_completed(futures):
             acc = futures[future]
             try:
@@ -298,9 +290,7 @@ if __name__ == "__main__":
     )
 
     parser.add_argument("input", type=Path, help="Path to fuzznuc TSV file")
-    parser.add_argument(
-        "output", type=Path, help="Desired path/to/filename for the output TSV"
-    )
+    parser.add_argument("output", type=Path, help="Desired path/to/filename for the output TSV")
     parser.add_argument(
         "--accession",
         type=str,

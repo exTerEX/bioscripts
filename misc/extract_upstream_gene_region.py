@@ -43,9 +43,7 @@ def fetch_genbank(accession: str) -> SeqRecord:
     Returns:
         SeqRecord object containing the GenBank data.
     """
-    with Entrez.efetch(
-        db="nucleotide", id=accession, rettype="gbwithparts", retmode="text"
-    ) as handle:
+    with Entrez.efetch(db="nucleotide", id=accession, rettype="gbwithparts", retmode="text") as handle:
         return SeqIO.read(handle, "genbank")
 
 
@@ -102,17 +100,11 @@ def get_nucleotide_accessions_from_assembly(assembly_accession: str) -> list[str
                     break
 
     if not nucleotide_ids:
-        raise ValueError(
-            f"No nucleotide records found for assembly: {assembly_accession}"
-        )
+        raise ValueError(f"No nucleotide records found for assembly: {assembly_accession}")
 
     # Fetch accession numbers from the UIDs
-    with Entrez.efetch(
-        db="nucleotide", id=",".join(nucleotide_ids), rettype="acc", retmode="text"
-    ) as handle:
-        accessions = [
-            line.strip() for line in handle.read().strip().split("\n") if line.strip()
-        ]
+    with Entrez.efetch(db="nucleotide", id=",".join(nucleotide_ids), rettype="acc", retmode="text") as handle:
+        accessions = [line.strip() for line in handle.read().strip().split("\n") if line.strip()]
 
     return accessions
 
@@ -164,9 +156,7 @@ def extract_upstream_region(
         region_end = end_pos
 
     else:  # Reverse strand (-1)
-        gene_end = int(
-            location.end
-        )  # 0-based exclusive (so this is the "start" for - strand)
+        gene_end = int(location.end)  # 0-based exclusive (so this is the "start" for - strand)
         # Upstream region starts at gene end (or -3 if including start codon)
         start_pos = gene_end - 3 if include_start_codon else gene_end
         end_pos = min(seq_len, gene_end + upstream_bp)
@@ -209,9 +199,7 @@ def process_record(
             if feature_locus not in locus_tags:
                 continue
 
-        extraction = extract_upstream_region(
-            feature, record, upstream_bp, include_start_codon
-        )
+        extraction = extract_upstream_region(feature, record, upstream_bp, include_start_codon)
 
         if extraction is None:
             continue
@@ -302,25 +290,19 @@ def main(
         print(f"Reading GenBank file: {genbank_path}", file=sys.stderr)
         with genbank_path.open() as f:
             for record in SeqIO.parse(f, "genbank"):
-                results = process_record(
-                    record, locus_tags, upstream_bp, include_start_codon
-                )
+                results = process_record(record, locus_tags, upstream_bp, include_start_codon)
                 all_results.extend(results)
 
     elif accession:
         # Get nucleotide accessions from assembly accession
-        print(
-            f"Fetching nucleotide accessions for assembly: {accession}", file=sys.stderr
-        )
+        print(f"Fetching nucleotide accessions for assembly: {accession}", file=sys.stderr)
         try:
             nucleotide_accessions = get_nucleotide_accessions_from_assembly(accession)
         except Exception as e:
             print(f"Error: {e}", file=sys.stderr)
             return
 
-        print(
-            f"Found {len(nucleotide_accessions)} nucleotide record(s)", file=sys.stderr
-        )
+        print(f"Found {len(nucleotide_accessions)} nucleotide record(s)", file=sys.stderr)
 
         if len(nucleotide_accessions) == 1:
             # Single contig, no threading needed
@@ -378,9 +360,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Extract upstream regions of genes from GenBank records"
-    )
+    parser = argparse.ArgumentParser(description="Extract upstream regions of genes from GenBank records")
 
     input_group = parser.add_mutually_exclusive_group(required=True)
     input_group.add_argument(

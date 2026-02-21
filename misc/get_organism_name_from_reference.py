@@ -57,9 +57,7 @@ def fetch_fasta(
         if cache_path.exists():
             return SeqIO.read(cache_path, "fasta")
 
-        with Entrez.efetch(
-            db="nuccore", id=accession_base, rettype="fasta", retmode="text"
-        ) as handle:
+        with Entrez.efetch(db="nuccore", id=accession_base, rettype="fasta", retmode="text") as handle:
             record = SeqIO.read(handle, "fasta")
 
         if cache:
@@ -121,10 +119,7 @@ def process_accessions(
 
     with ThreadPoolExecutor(max_workers=threads) as executor:
         # Submit all tasks with their index for ordering
-        futures = {
-            executor.submit(extract_organism, acc, cache): i
-            for i, acc in enumerate(accessions)
-        }
+        futures = {executor.submit(extract_organism, acc, cache): i for i, acc in enumerate(accessions)}
 
         for future in as_completed(futures):
             idx = futures[future]
@@ -324,9 +319,7 @@ def main(
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(
-        description="Extract organism names from NCBI nucleotide accessions"
-    )
+    parser = argparse.ArgumentParser(description="Extract organism names from NCBI nucleotide accessions")
 
     parser.add_argument(
         "input",

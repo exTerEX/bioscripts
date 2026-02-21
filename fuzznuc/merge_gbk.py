@@ -24,9 +24,7 @@ from Bio import SeqIO
 from Bio.SeqFeature import FeatureLocation, SeqFeature
 
 
-def parse_fuzznuc_features(
-    fuzznuc_path: Path, descriptor: str | None = None
-) -> list[SeqFeature]:
+def parse_fuzznuc_features(fuzznuc_path: Path, descriptor: str | None = None) -> list[SeqFeature]:
     """Parse fuzznuc GenBank file and convert features to misc_binding.
 
     Args:
@@ -125,16 +123,10 @@ def merge_genbank(
 
 
 def main():
-    parser = argparse.ArgumentParser(
-        description="Merge a GenBank genome file with fuzznuc motif search results"
-    )
+    parser = argparse.ArgumentParser(description="Merge a GenBank genome file with fuzznuc motif search results")
 
-    parser.add_argument(
-        "genome", type=Path, help="Path to the complete genome GenBank flat file"
-    )
-    parser.add_argument(
-        "fuzznuc", type=Path, help="Path to the fuzznuc results GenBank flat file"
-    )
+    parser.add_argument("genome", type=Path, help="Path to the complete genome GenBank flat file")
+    parser.add_argument("fuzznuc", type=Path, help="Path to the fuzznuc results GenBank flat file")
     parser.add_argument(
         "output",
         type=Path,
