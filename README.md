@@ -22,12 +22,11 @@ Tools for processing antiSMASH biosynthetic gene cluster (BGC) analysis results.
 
 ### BLAST (`blast/`)
 
-Tools for filtering BLAST output.
+Tools for parsing, annotating, and filtering BLAST results.
 
 | Script | Description |
 |--------|-------------|
-| `filter_correct_blastn.py` | Filter and correct BLASTn results *(in development)* |
-| `filter_correct_tblastn.py` | Filter and correct tBLASTn results *(in development)* |
+| `annotate_blast.py` | Parse BLAST XML/XML2 results and annotate both query and hit sequences with gene information (coordinates, product, locus tag, pseudo status, nucleotide & protein sequences) from local GBFF files or NCBI. Auto-detects BLAST program type and supports strand/frame filtering. |
 
 ### Fuzznuc (`fuzznuc/`)
 
