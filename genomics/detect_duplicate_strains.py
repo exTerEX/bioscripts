@@ -38,11 +38,12 @@ import re
 import struct
 import sys
 from collections import Counter
+from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass, field
+from difflib import SequenceMatcher as _SequenceMatcher
 from itertools import combinations
 from pathlib import Path
-from typing import Iterator
 
 from Bio import Entrez, SeqIO
 from Bio.SeqRecord import SeqRecord
@@ -274,9 +275,7 @@ def kmer_hash(kmer: str, seed: int = 42) -> int:
     return murmurhash3_x64_128(kmer.encode(), seed)
 
 
-def compute_minhash_sketch(
-    sequence: str, k: int = 21, sketch_size: int = 1000, seed: int = 42
-) -> list[int]:
+def compute_minhash_sketch(sequence: str, k: int = 21, sketch_size: int = 1000, seed: int = 42) -> list[int]:
     """Compute MinHash sketch of a genome sequence.
 
     MinHash sketching provides fast approximate Jaccard similarity estimation.
@@ -305,9 +304,7 @@ def compute_minhash_sketch(
     return sorted_hashes[:sketch_size]
 
 
-def compute_kmer_frequencies(
-    sequence: str, k: int = 21, sample_size: int = 10000
-) -> dict[str, int]:
+def compute_kmer_frequencies(sequence: str, k: int = 21, sample_size: int = 10000) -> dict[str, int]:
     """Compute k-mer frequency distribution (sampled for large genomes).
 
     Args:
@@ -405,9 +402,7 @@ def calculate_shared_kmer_ratio(freq1: dict[str, int], freq2: dict[str, int]) ->
     return shared / total if total > 0 else 0.0
 
 
-def calculate_kmer_frequency_correlation(
-    freq1: dict[str, int], freq2: dict[str, int]
-) -> float:
+def calculate_kmer_frequency_correlation(freq1: dict[str, int], freq2: dict[str, int]) -> float:
     """Calculate Pearson correlation of k-mer frequencies for shared k-mers.
 
     High correlation suggests same genome/strain even if not identical.
@@ -441,9 +436,7 @@ def calculate_kmer_frequency_correlation(
     return cov / (std_x * std_y)
 
 
-def compute_sequence_analysis(
-    metadata: StrainMetadata, k: int = 21, sketch_size: int = 1000
-) -> None:
+def compute_sequence_analysis(metadata: StrainMetadata, k: int = 21, sketch_size: int = 1000) -> None:
     """Compute sequence analysis metrics for a strain (modifies in place).
 
     Args:
@@ -463,9 +456,7 @@ def compute_sequence_analysis(
     metadata.kmer_frequencies = compute_kmer_frequencies(sequence, k)
 
 
-def compare_sequences(
-    meta1: StrainMetadata, meta2: StrainMetadata, k: int = 21
-) -> tuple[float, float, float, float]:
+def compare_sequences(meta1: StrainMetadata, meta2: StrainMetadata, k: int = 21) -> tuple[float, float, float, float]:
     """Compare two genomes using sequence analysis.
 
     Args:
@@ -476,16 +467,10 @@ def compare_sequences(
     Returns:
         Tuple of (minhash_similarity, estimated_ani, shared_kmer_ratio, kmer_correlation).
     """
-    minhash_sim = estimate_jaccard_from_minhash(
-        meta1.minhash_sketch, meta2.minhash_sketch
-    )
+    minhash_sim = estimate_jaccard_from_minhash(meta1.minhash_sketch, meta2.minhash_sketch)
     ani = estimate_ani_from_jaccard(minhash_sim, k)
-    shared_ratio = calculate_shared_kmer_ratio(
-        meta1.kmer_frequencies, meta2.kmer_frequencies
-    )
-    correlation = calculate_kmer_frequency_correlation(
-        meta1.kmer_frequencies, meta2.kmer_frequencies
-    )
+    shared_ratio = calculate_shared_kmer_ratio(meta1.kmer_frequencies, meta2.kmer_frequencies)
+    correlation = calculate_kmer_frequency_correlation(meta1.kmer_frequencies, meta2.kmer_frequencies)
 
     return minhash_sim, ani, shared_ratio, correlation
 
@@ -554,13 +539,11 @@ def extract_metadata_from_records(
     # Extract from source feature qualifiers
     metadata.strain = get_source_qualifier(first_record, "strain")
     metadata.isolate = get_source_qualifier(first_record, "isolate")
-    metadata.culture_collection = get_source_qualifier(
-        first_record, "culture_collection"
-    )
+    metadata.culture_collection = get_source_qualifier(first_record, "culture_collection")
     metadata.type_material = get_source_qualifier(first_record, "type_material")
-    metadata.infraspecific_name = get_source_qualifier(
-        first_record, "sub_species"
-    ) or get_source_qualifier(first_record, "variety")
+    metadata.infraspecific_name = get_source_qualifier(first_record, "sub_species") or get_source_qualifier(
+        first_record, "variety"
+    )
     metadata.isolation_source = get_source_qualifier(first_record, "isolation_source")
     metadata.host = get_source_qualifier(first_record, "host")
     metadata.country = get_source_qualifier(first_record, "country")
@@ -673,9 +656,7 @@ def fetch_assembly_metadata(
             ) as handle:
                 link_results = Entrez.read(handle)
             if link_results[0]["LinkSetDb"]:
-                nuc_ids = [
-                    link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]
-                ]
+                nuc_ids = [link["Id"] for link in link_results[0]["LinkSetDb"][0]["Link"]]
 
         if not nuc_ids:
             print(f"No nucleotide records found for {accession}", file=sys.stderr)
@@ -757,6 +738,63 @@ def normalize_strain_name(name: str) -> str:
     return normalized.strip()
 
 
+def are_strain_names_similar(name1: str, name2: str) -> bool:
+    """Check if two normalized strain names likely refer to the same strain.
+
+    Uses a combination of character-level sequence similarity and token-based
+    overlap to distinguish genuinely similar names (e.g. 'SanR154' ~ 'R154')
+    from spurious substring hits (e.g. 'MB117v1b' ~ '11').
+
+    The word and number order of strain names is typically conserved between
+    synonyms; only separators, prefixes, or suffixes tend to change.
+
+    Args:
+        name1: First normalized strain name.
+        name2: Second normalized strain name.
+
+    Returns:
+        True if the names are similar enough to suggest the same strain.
+    """
+    if not name1 or not name2:
+        return False
+    if name1 == name2:
+        return True
+
+    # Very short names (< 3 chars) are too ambiguous for substring matching
+    shorter_len = min(len(name1), len(name2))
+    if shorter_len < 3:
+        return False
+
+    # Character-level similarity (order-sensitive)
+    # This catches names that differ only in separators or minor edits,
+    # e.g. 'sanr154' vs 'sanr154 tc', 'mb22v1b' vs 'mb22v2b'
+    if _SequenceMatcher(None, name1, name2).ratio() >= 0.6:
+        return True
+
+    # Token-based overlap for names with appended/prepended identifiers
+    # e.g. 'sk52' vs 'sk52 = dsm 20563'
+    tokens1 = re.findall(r"[a-z]+|\d+", name1)
+    tokens2 = re.findall(r"[a-z]+|\d+", name2)
+    if tokens1 and tokens2:
+        remaining = list(tokens2)
+        matched: list[str] = []
+        for tok in tokens1:
+            if tok in remaining:
+                remaining.remove(tok)
+                matched.append(tok)
+        if matched:
+            frac1 = len(matched) / len(tokens1)
+            frac2 = len(matched) / len(tokens2)
+            matched_chars = sum(len(t) for t in matched)
+            # Both names must share at least half their tokens, and the
+            # shared content must be non-trivial (≥ 2 tokens, or a single
+            # token ≥ 5 chars so common 3-letter prefixes don't suffice)
+            if min(frac1, frac2) >= 0.5 and (len(matched) >= 2 or matched_chars >= 5):
+                return True
+
+    return False
+
+
 def extract_culture_collection_id(cc_string: str) -> tuple[str, str]:
     """Extract culture collection name and ID.
 
@@ -772,9 +810,7 @@ def extract_culture_collection_id(cc_string: str) -> tuple[str, str]:
     return "", cc_string
 
 
-def calculate_contig_profile_similarity(
-    lengths1: list[int], lengths2: list[int]
-) -> float:
+def calculate_contig_profile_similarity(lengths1: list[int], lengths2: list[int]) -> float:
     """Calculate similarity between two contig length profiles.
 
     Args:
@@ -859,84 +895,49 @@ def compare_strains(
     if meta1.sequence_checksums and meta2.sequence_checksums:
         common_checksums = set(meta1.sequence_checksums) & set(meta2.sequence_checksums)
         if common_checksums:
-            ratio = len(common_checksums) / max(
-                len(meta1.sequence_checksums), len(meta2.sequence_checksums)
-            )
+            ratio = len(common_checksums) / max(len(meta1.sequence_checksums), len(meta2.sequence_checksums))
             if ratio >= similarity_threshold:
                 match_reasons.append(
-                    f"Identical sequences: {len(common_checksums)} contigs match "
-                    f"({ratio:.1%} overlap)"
+                    f"Identical sequences: {len(common_checksums)} contigs match ({ratio:.1%} overlap)"
                 )
                 confidence_scores.append(95)
 
     # 4. Sequence-based analysis (MinHash + k-mer)
     if enable_sequence_analysis and meta1.minhash_sketch and meta2.minhash_sketch:
-        minhash_sim, estimated_ani, shared_kmer_ratio, kmer_corr = compare_sequences(
-            meta1, meta2, kmer_size
-        )
+        minhash_sim, estimated_ani, shared_kmer_ratio, kmer_corr = compare_sequences(meta1, meta2, kmer_size)
 
         # Very high ANI suggests duplicate (>99.9% = essentially same strain)
         if estimated_ani >= ani_threshold:
             match_reasons.append(
-                f"High sequence similarity: estimated ANI {estimated_ani:.4f} "
-                f"(MinHash Jaccard: {minhash_sim:.4f})"
+                f"High sequence similarity: estimated ANI {estimated_ani:.4f} (MinHash Jaccard: {minhash_sim:.4f})"
             )
             confidence_scores.append(95)
         elif estimated_ani >= 0.995:
             match_reasons.append(
-                f"Very similar sequences: estimated ANI {estimated_ani:.4f} "
-                f"(MinHash Jaccard: {minhash_sim:.4f})"
+                f"Very similar sequences: estimated ANI {estimated_ani:.4f} (MinHash Jaccard: {minhash_sim:.4f})"
             )
             confidence_scores.append(85)
         elif estimated_ani >= 0.99:
             match_reasons.append(
-                f"Similar sequences: estimated ANI {estimated_ani:.4f} "
-                f"(MinHash Jaccard: {minhash_sim:.4f})"
+                f"Similar sequences: estimated ANI {estimated_ani:.4f} (MinHash Jaccard: {minhash_sim:.4f})"
             )
             confidence_scores.append(70)
 
         # High k-mer correlation with moderate ANI
         if kmer_corr >= 0.95 and estimated_ani >= 0.98:
             match_reasons.append(
-                f"High k-mer frequency correlation: {kmer_corr:.4f} "
-                f"(shared k-mers: {shared_kmer_ratio:.2%})"
+                f"High k-mer frequency correlation: {kmer_corr:.4f} (shared k-mers: {shared_kmer_ratio:.2%})"
             )
             confidence_scores.append(80)
 
-    # 5. Same organism + similar strain names
-    if meta1.organism and meta2.organism:
-        if meta1.organism.lower() == meta2.organism.lower():
-            norm_strain1 = normalize_strain_name(meta1.strain or meta1.isolate)
-            norm_strain2 = normalize_strain_name(meta2.strain or meta2.isolate)
-
-            if norm_strain1 and norm_strain2:
-                # Check for exact match after normalization
-                if norm_strain1 == norm_strain2:
-                    match_reasons.append(
-                        f"Same organism ({meta1.organism}) with matching strain names: "
-                        f"'{meta1.strain or meta1.isolate}' ~ '{meta2.strain or meta2.isolate}'"
-                    )
-                    confidence_scores.append(85)
-                # Check if one contains the other
-                elif norm_strain1 in norm_strain2 or norm_strain2 in norm_strain1:
-                    match_reasons.append(
-                        f"Same organism ({meta1.organism}) with similar strain names: "
-                        f"'{meta1.strain or meta1.isolate}' ~ '{meta2.strain or meta2.isolate}'"
-                    )
-                    confidence_scores.append(70)
-
     # 6. Very similar genome statistics
     if meta1.total_length > 0 and meta2.total_length > 0:
-        length_ratio = min(meta1.total_length, meta2.total_length) / max(
-            meta1.total_length, meta2.total_length
-        )
+        length_ratio = min(meta1.total_length, meta2.total_length) / max(meta1.total_length, meta2.total_length)
         gc_diff = abs(meta1.gc_content - meta2.gc_content)
 
         if length_ratio >= 0.99 and gc_diff <= 0.001:
             # Check contig profile
-            contig_sim = calculate_contig_profile_similarity(
-                meta1.contig_lengths, meta2.contig_lengths
-            )
+            contig_sim = calculate_contig_profile_similarity(meta1.contig_lengths, meta2.contig_lengths)
             if contig_sim >= 0.95:
                 match_reasons.append(
                     f"Near-identical genome profile: length ratio {length_ratio:.4f}, "
@@ -948,7 +949,7 @@ def compare_strains(
     if meta1.type_material and meta2.type_material:
         if meta1.type_material == meta2.type_material:
             match_reasons.append(f"Same type material: {meta1.type_material}")
-            confidence_scores.append(85)
+            confidence_scores.append(90)
 
     # Only return match if we have reasons
     if not match_reasons:
@@ -1138,27 +1139,27 @@ def write_cluster_report(
     with cluster_output.open("w", newline="") as f:
         writer = csv.writer(f, delimiter="\t")
 
-        writer.writerow([
-            "cluster_id",
-            "cluster_size",
-            "source_id",
-            "organism",
-            "strain",
-            "isolate",
-            "culture_collection",
-            "biosample",
-            "assembly_accession",
-            "total_length",
-            "gc_content",
-            "num_contigs",
-            "linked_to",
-            "link_confidence",
-            "link_reasons",
-        ])
+        writer.writerow(
+            [
+                "cluster_id",
+                "cluster_size",
+                "source_id",
+                "organism",
+                "strain",
+                "isolate",
+                "culture_collection",
+                "biosample",
+                "assembly_accession",
+                "total_length",
+                "gc_content",
+                "num_contigs",
+                "linked_to",
+                "link_confidence",
+                "link_reasons",
+            ]
+        )
 
-        for cluster_idx, (root, members) in enumerate(
-            sorted(clusters.items(), key=lambda kv: -len(kv[1])), start=1
-        ):
+        for cluster_idx, (root, members) in enumerate(sorted(clusters.items(), key=lambda kv: -len(kv[1])), start=1):
             for member in sorted(members):
                 meta = metadata_lookup.get(member)
                 if meta is None:
@@ -1179,23 +1180,25 @@ def write_cluster_report(
                         link_reasons = " | ".join(m.match_reasons)
                         break  # Only need the first direct link
 
-                writer.writerow([
-                    cluster_idx,
-                    len(members),
-                    member,
-                    meta.organism,
-                    meta.strain,
-                    meta.isolate,
-                    meta.culture_collection,
-                    meta.biosample,
-                    meta.assembly_accession,
-                    meta.total_length,
-                    f"{meta.gc_content:.4f}",
-                    meta.num_contigs,
-                    linked_to,
-                    link_confidence,
-                    link_reasons,
-                ])
+                writer.writerow(
+                    [
+                        cluster_idx,
+                        len(members),
+                        member,
+                        meta.organism,
+                        meta.strain,
+                        meta.isolate,
+                        meta.culture_collection,
+                        meta.biosample,
+                        meta.assembly_accession,
+                        meta.total_length,
+                        f"{meta.gc_content:.4f}",
+                        meta.num_contigs,
+                        linked_to,
+                        link_confidence,
+                        link_reasons,
+                    ]
+                )
 
     print(f"Cluster report written to: {cluster_output}")
 
@@ -1261,10 +1264,7 @@ def main(
             print("  (with sequence analysis enabled - this may take longer)")
 
         with ThreadPoolExecutor(max_workers=threads) as executor:
-            futures = {
-                executor.submit(parse_gbff_file, path, enable_sequence_analysis): path
-                for path in gbff_files
-            }
+            futures = {executor.submit(parse_gbff_file, path, enable_sequence_analysis): path for path in gbff_files}
 
             for future in as_completed(futures):
                 result = future.result()
@@ -1321,10 +1321,7 @@ def main(
 
                 with ThreadPoolExecutor(max_workers=threads) as executor:
                     futures = {
-                        executor.submit(
-                            parse_gbff_file, path, enable_sequence_analysis
-                        ): path
-                        for path in gbff_files
+                        executor.submit(parse_gbff_file, path, enable_sequence_analysis): path for path in gbff_files
                     }
 
                     for future in as_completed(futures):
@@ -1351,9 +1348,7 @@ def main(
 
     # Compute sequence analysis if enabled
     if enable_sequence_analysis:
-        print(
-            f"Computing MinHash sketches (k={kmer_size}, sketch_size={sketch_size})..."
-        )
+        print(f"Computing MinHash sketches (k={kmer_size}, sketch_size={sketch_size})...")
         for i, meta in enumerate(metadata_list):
             if (i + 1) % 10 == 0:
                 print(f"  Progress: {i + 1}/{len(metadata_list)} genomes analyzed")
