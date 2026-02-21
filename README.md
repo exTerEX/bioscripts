@@ -1,12 +1,13 @@
 # Bioscripts
 
-A collection of Python scripts developed during my PhD for automating small, repetitive bioinformatics tasks. These tools primarily interface with NCBI/EMBL, process genomic data, and parse output from common bioinformatics tools.
+A collection of scripts developed during my PhD for automating small, repetitive bioinformatics tasks. These tools primarily interface with NCBI/EMBL, process genomic data, and parse output from common bioinformatics tools.
 
 ## Requirements
 
 - Python 3.10+
 - BioPython
 - Pandas
+- [NCBI datasets CLI](https://www.ncbi.nlm.nih.gov/datasets/docs/v2/download-and-install/) (for `genomics/` shell scripts)
 
 ## Scripts
 
@@ -18,6 +19,15 @@ Tools for processing antiSMASH biosynthetic gene cluster (BGC) analysis results.
 |--------|-------------|
 | `count_regions.py` | Count BGC regions across multiple antiSMASH result directories |
 | `tabulate_regions.py` | Tabulate BGC regions with detailed metadata including KnownClusterBlast hits |
+
+### BLAST (`blast/`)
+
+Tools for filtering BLAST output.
+
+| Script | Description |
+|--------|-------------|
+| `filter_correct_blastn.py` | Filter and correct BLASTn results *(in development)* |
+| `filter_correct_tblastn.py` | Filter and correct tBLASTn results *(in development)* |
 
 ### Fuzznuc (`fuzznuc/`)
 
@@ -34,8 +44,21 @@ General-purpose utilities for NCBI data retrieval and processing.
 
 | Script | Description |
 |--------|-------------|
+| `extract_upstream_gene_region.py` | Extract upstream regions of genes from GenBank records |
 | `get_organism_name_from_reference.py` | Extract organism names from NCBI nucleotide accessions |
 | `reference2assembly.py` | Convert NCBI nucleotide accessions to assembly accessions |
+
+### Genomics (`genomics/`)
+
+Tools for downloading, rehydrating, and analysing NCBI genome assemblies.
+
+| Script | Description |
+|--------|-------------|
+| `deduplicate_genomes.py` | Remove duplicate genomes from an NCBI datasets zip file using the report from `detect_duplicate_strains.py` |
+| `detect_duplicate_strains.py` | Detect potential duplicate strains from GBFF files or assembly accessions using metadata, checksums, and optional MinHash/k-mer sequence analysis |
+| `fetch_genomes_accession.sh` | Download genomes by GenBank/RefSeq accession using NCBI datasets |
+| `fetch_genomes_taxon.sh` | Download genomes by taxon ID using NCBI datasets |
+| `hydrate_genomes.sh` | Rehydrate a dehydrated NCBI datasets zip archive |
 
 ## Usage
 

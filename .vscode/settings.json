@@ -1,0 +1,25 @@
+{
+    // Python
+    "python.defaultInterpreterPath": "${workspaceFolder}/.venv/bin/python",
+
+    // Ruff (formatter + linter)
+    "[python]": {
+        "editor.defaultFormatter": "charliermarsh.ruff",
+        "editor.formatOnSave": true,
+        "editor.codeActionsOnSave": {
+            "source.fixAll.ruff": "explicit",
+            "source.organizeImports.ruff": "explicit"
+        }
+    },
+
+    // Editor
+    "editor.rulers": [120],
+
+    // Files
+    "files.exclude": {
+        "**/__pycache__": true,
+        "**/.venv": true
+    },
+    "files.trimTrailingWhitespace": true,
+    "files.insertFinalNewline": true
+}
