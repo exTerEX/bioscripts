@@ -53,19 +53,19 @@ def refseq_to_assembly(accession: str, cache_dir: Path | None = None) -> str | N
         with Entrez.esearch(db="nuccore", term=accession, retmax=1) as handle:
             search_result = Entrez.read(handle)
 
-        if not search_result["IdList"]:
+        if not search_result["IdList"]:  # type: ignore
             print(f"Warning: No nuccore ID found for: {accession}", file=sys.stderr)
             return None
 
-        nuccore_id = search_result["IdList"][0]
+        nuccore_id = search_result["IdList"][0]  # type: ignore
 
         # Step 2: Link nuccore to assembly database
         with Entrez.elink(dbfrom="nuccore", db="assembly", id=nuccore_id) as handle:
             link_result = Entrez.read(handle)
 
         assembly_id = None
-        if link_result and link_result[0].get("LinkSetDb"):
-            for link_set in link_result[0]["LinkSetDb"]:
+        if link_result and link_result[0].get("LinkSetDb"):  # type: ignore
+            for link_set in link_result[0]["LinkSetDb"]:  # type: ignore
                 if link_set["DbTo"] == "assembly" and link_set.get("Link"):
                     assembly_id = link_set["Link"][0]["Id"]
                     break
@@ -74,19 +74,19 @@ def refseq_to_assembly(accession: str, cache_dir: Path | None = None) -> str | N
             print(f"Warning: No assembly ID found for: {accession}", file=sys.stderr)
             if cache_dir:
                 cache_dir.mkdir(parents=True, exist_ok=True)
-                cache_file.write_text("")
+                cache_file.write_text("")  # type: ignore
             return None
 
         # Step 3: Fetch assembly summary to get accession
         with Entrez.esummary(db="assembly", id=assembly_id) as handle:
             summary = Entrez.read(handle)
 
-        doc_summary = summary.get("DocumentSummarySet", {}).get("DocumentSummary", [])
+        doc_summary = summary.get("DocumentSummarySet", {}).get("DocumentSummary", [])  # type: ignore
         if doc_summary:
             assembly_acc = doc_summary[0].get("AssemblyAccession", doc_summary[0].get("Accession"))
             if assembly_acc and cache_dir:
                 cache_dir.mkdir(parents=True, exist_ok=True)
-                cache_file.write_text(assembly_acc)
+                cache_file.write_text(assembly_acc)  # type: ignore
             return assembly_acc
 
     except Exception as e:
