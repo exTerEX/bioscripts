@@ -18,9 +18,6 @@ Tools for processing antiSMASH biosynthetic gene cluster (BGC) analysis results.
 | Script | Description |
 |--------|-------------|
 | `bgc_completeness.py` | Cross-reference antiSMASH BGCs against a reference gene list (e.g. MIBiG) and report which core biosynthetic genes are present, partial, or missing per cluster |
-| `bgc_synteny.py` | Compare gene order and orientation of BGCs across antiSMASH results with pairwise synteny scoring, collinearity, and rearrangement detection |
-| `count_regions.py` | Count BGC regions across multiple antiSMASH result directories |
-| `tabulate_regions.py` | Tabulate BGC regions with detailed metadata including KnownClusterBlast hits |
 
 ### BLAST (`blast/`)
 
